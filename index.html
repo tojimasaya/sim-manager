@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SIM Manager</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #030712; font-family: 'Noto Sans JP', sans-serif; color: #f9fafb; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    input, select, textarea { font-family: 'Noto Sans JP', sans-serif; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+    const STORAGE_KEY = "sim_manager_v1";
+
+    const initialSims = [
+      { id:1,  number:"94647832 / 17817403429", carrier:"CMHK",      country:"香港", email:"",                       device:"iPhone 17 Pro",   status:"使用中",  memo:"eSIM" },
+      { id:2,  number:"67052227",               carrier:"CMHK",      country:"香港", email:"",                       device:"OPPO Find N5",    status:"使用中",  memo:"2024/05/10 CMHK Hotlineに連絡\nCMHK Support Staff Mr.Uno/29458881\nPlan変更\n67052227 /30GB/2GB CN —HKD99\n94647832+CN no./30GB/2GB CN/ —HKD 99+18\n54293003 /200MB 4G/ —HKD18\n—\nTotal HKD234" },
+      { id:3,  number:"54293003",               carrier:"MoreMobile", country:"香港", email:"",                       device:"",                status:"BackUp",  memo:"BackUp用" },
+      { id:4,  number:"07090792088",            carrier:"楽天",       country:"日本", email:"tj2@isl.hk",             device:"iPhone 17 Pro",   status:"使用中",  memo:"" },
+      { id:5,  number:"07091981272",            carrier:"楽天",       country:"日本", email:"condylee@gmail.com",     device:"Sasaさんに貸した", status:"貸出中",  memo:"2024/05/09 Sasaさんと飲茶してSIMを今年年末まで貸すことにした。\n900ドルもらった\n\n2024/11/25\nSASAさんと飲茶、SIMをもう一年貸すことに、18000円もらう\n\n2025/1/20 さらに400ドル追加でもらう\n2025/12/7 Sasaさんと飲茶 26年分の電話代を2162 x 12 =25994 円もらった" },
+      { id:6,  number:"07083095846",            carrier:"楽天",       country:"日本", email:"",                       device:"Condy VIVO",      status:"使用中",  memo:"2024/04/02 ワイモバイルから電話で4月以降の請求費用から2万円分を値引きするとのことでした。\n2025/05/16 Ymobileから楽天にMNPした" },
+      { id:7,  number:"09034350492",            carrier:"Povo",       country:"日本", email:"tj2@mac.com",            device:"解約済み",         status:"解約済み", memo:"CableKard内" },
+      { id:8,  number:"08063854239",            carrier:"Povo",       country:"日本", email:"tojimasaya07@gmail.com", device:"",                status:"貸出中",  memo:"Ryuichi使用中" },
+      { id:9,  number:"07037819253",            carrier:"Povo",       country:"日本", email:"tj2@icloud.com",         device:"",                status:"使用中",  memo:"2026年1月契約" },
+      { id:10, number:"852468627656853",         carrier:"BananaSIM",  country:"香港", email:"",                       device:"OPPO Find N5",    status:"使用中",  memo:"世界ローミングSIM" },
+      { id:11, number:"85290120395",            carrier:"激SIM",       country:"香港", email:"",                       device:"Xiaomi 17 Ultra", status:"使用中",  memo:"香港SIM" },
+      { id:12, number:"8524610183870",          carrier:"中国電信",    country:"香港", email:"",                       device:"Xiaomi 17 Ultra", status:"使用中",  memo:"香港・中国・マカオSIM" },
+    ];
+
+    const carrierColors = {
+      "CMHK":"#e84042","MoreMobile":"#8b5cf6","楽天":"#bf0000",
+      "Povo":"#f97316","BananaSIM":"#eab308","激SIM":"#06b6d4","中国電信":"#3b82f6"
+    };
+    const statusConfig = {
+      "使用中":  {bg:"#052e16",text:"#4ade80",dot:"#22c55e"},
+      "貸出中":  {bg:"#172554",text:"#93c5fd",dot:"#60a5fa"},
+      "BackUp":  {bg:"#1c1917",text:"#a8a29e",dot:"#78716c"},
+      "解約済み":{bg:"#450a0a",text:"#fca5a5",dot:"#ef4444"},
+    };
+
+    const Label = ({children}) => (
+      <div style={{color:"#6b7280",fontSize:10,fontWeight:700,marginBottom:5,textTransform:"uppercase",letterSpacing:"0.1em"}}>{children}</div>
+    );
+
+    function StatusBadge({status}) {
+      const c = statusConfig[status]||statusConfig["使用中"];
+      return <span style={{display:"inline-flex",alignItems:"center",gap:5,background:c.bg,color:c.text,padding:"3px 10px",borderRadius:999,fontSize:11,fontWeight:600,border:`1px solid ${c.dot}44`}}>
+        <span style={{width:6,height:6,borderRadius:"50%",background:c.dot,flexShrink:0}}/>
+        {status}
+      </span>;
+    }
+
+    function CarrierBadge({carrier}) {
+      return <span style={{background:carrierColors[carrier]||"#374151",color:"#fff",padding:"3px 10px",borderRadius:4,fontSize:11,fontWeight:700,whiteSpace:"nowrap"}}>{carrier}</span>;
+    }
+
+    const inputStyle = {width:"100%",background:"#1f2937",border:"1px solid #374151",borderRadius:7,color:"#f9fafb",padding:"9px 12px",fontSize:13,outline:"none"};
+
+    function Modal({sim, onClose, onSave, onDelete}) {
+      const [form,setForm] = useState({...sim});
+      const set = (k,v) => setForm(f=>({...f,[k]:v}));
+      return (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",backdropFilter:"blur(6px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:200,padding:20}} onClick={onClose}>
+          <div style={{background:"#111827",border:"1px solid #1e293b",borderRadius:14,padding:28,width:"100%",maxWidth:500,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 30px 80px rgba(0,0,0,0.9)"}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:22}}>
+              <h3 style={{color:"#f9fafb",fontSize:16,fontWeight:700}}>SIM 編集</h3>
+              <button onClick={onClose} style={{background:"none",border:"none",color:"#6b7280",cursor:"pointer",fontSize:24,lineHeight:1}}>×</button>
+            </div>
+            {[["番号","number"],["キャリア","carrier"],["国","country"],["メール","email"],["端末","device"]].map(([label,key])=>(
+              <div key={key} style={{marginBottom:14}}>
+                <Label>{label}</Label>
+                <input value={form[key]} onChange={e=>set(key,e.target.value)} style={inputStyle}/>
+              </div>
+            ))}
+            <div style={{marginBottom:14}}>
+              <Label>ステータス</Label>
+              <select value={form.status} onChange={e=>set("status",e.target.value)} style={{...inputStyle,cursor:"pointer"}}>
+                {["使用中","貸出中","BackUp","解約済み"].map(s=><option key={s}>{s}</option>)}
+              </select>
+            </div>
+            <div style={{marginBottom:22}}>
+              <Label>メモ</Label>
+              <textarea value={form.memo} onChange={e=>set("memo",e.target.value)} rows={5} style={{...inputStyle,resize:"vertical"}}/>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <button onClick={()=>{if(confirm("このSIMを削除しますか？")){onDelete(sim.id);}}} style={{background:"none",border:"1px solid #7f1d1d",color:"#ef4444",padding:"8px 16px",borderRadius:7,cursor:"pointer",fontSize:12,fontWeight:600}}>削除</button>
+              <div style={{display:"flex",gap:10}}>
+                <button onClick={onClose} style={{background:"#1f2937",border:"1px solid #374151",color:"#9ca3af",padding:"8px 18px",borderRadius:7,cursor:"pointer",fontSize:13}}>キャンセル</button>
+                <button onClick={()=>{onSave(form);onClose();}} style={{background:"#2563eb",border:"none",color:"#fff",padding:"8px 22px",borderRadius:7,cursor:"pointer",fontSize:13,fontWeight:600}}>保存</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function AddModal({onClose, onAdd}) {
+      const [form,setForm] = useState({number:"",carrier:"",country:"香港",email:"",device:"",status:"使用中",memo:""});
+      const set = (k,v) => setForm(f=>({...f,[k]:v}));
+      return (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",backdropFilter:"blur(6px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:200,padding:20}} onClick={onClose}>
+          <div style={{background:"#111827",border:"1px solid #1e293b",borderRadius:14,padding:28,width:"100%",maxWidth:500,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 30px 80px rgba(0,0,0,0.9)"}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:22}}>
+              <h3 style={{color:"#f9fafb",fontSize:16,fontWeight:700}}>新規 SIM 追加</h3>
+              <button onClick={onClose} style={{background:"none",border:"none",color:"#6b7280",cursor:"pointer",fontSize:24,lineHeight:1}}>×</button>
+            </div>
+            {[["番号","number"],["キャリア","carrier"],["メール","email"],["端末","device"]].map(([label,key])=>(
+              <div key={key} style={{marginBottom:14}}>
+                <Label>{label}</Label>
+                <input value={form[key]} onChange={e=>set(key,e.target.value)} style={inputStyle}/>
+              </div>
+            ))}
+            <div style={{marginBottom:14}}>
+              <Label>国</Label>
+              <select value={form.country} onChange={e=>set("country",e.target.value)} style={{...inputStyle,cursor:"pointer"}}>
+                {["香港","日本"].map(s=><option key={s}>{s}</option>)}
+              </select>
+            </div>
+            <div style={{marginBottom:14}}>
+              <Label>ステータス</Label>
+              <select value={form.status} onChange={e=>set("status",e.target.value)} style={{...inputStyle,cursor:"pointer"}}>
+                {["使用中","貸出中","BackUp","解約済み"].map(s=><option key={s}>{s}</option>)}
+              </select>
+            </div>
+            <div style={{marginBottom:22}}>
+              <Label>メモ</Label>
+              <textarea value={form.memo} onChange={e=>set("memo",e.target.value)} rows={4} style={{...inputStyle,resize:"vertical"}}/>
+            </div>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+              <button onClick={onClose} style={{background:"#1f2937",border:"1px solid #374151",color:"#9ca3af",padding:"8px 18px",borderRadius:7,cursor:"pointer",fontSize:13}}>キャンセル</button>
+              <button onClick={()=>{if(!form.number){alert("番号を入力してください");return;}onAdd(form);onClose();}} style={{background:"#16a34a",border:"none",color:"#fff",padding:"8px 22px",borderRadius:7,cursor:"pointer",fontSize:13,fontWeight:600}}>追加</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      const [sims,setSims] = useState([]);
+      const [filter,setFilter] = useState({country:"all",status:"all",search:""});
+      const [editing,setEditing] = useState(null);
+      const [adding,setAdding] = useState(false);
+      const [expandedMemo,setExpandedMemo] = useState(null);
+
+      useEffect(()=>{
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          setSims(saved ? JSON.parse(saved) : initialSims);
+        } catch { setSims(initialSims); }
+      },[]);
+
+      const save = (data) => {
+        setSims(data);
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
+      };
+
+      const handleSave = (updated) => save(sims.map(s=>s.id===updated.id?updated:s));
+      const handleDelete = (id) => { save(sims.filter(s=>s.id!==id)); setEditing(null); };
+      const handleAdd = (form) => save([...sims, {...form, id:Date.now()}]);
+
+      const filtered = sims.filter(s=>{
+        if(filter.country!=="all"&&s.country!==filter.country) return false;
+        if(filter.status!=="all"&&s.status!==filter.status) return false;
+        if(filter.search){
+          const q=filter.search.toLowerCase();
+          if(!`${s.number} ${s.carrier} ${s.device} ${s.email} ${s.memo}`.toLowerCase().includes(q)) return false;
+        }
+        return true;
+      });
+
+      const stats = {
+        total:sims.length, active:sims.filter(s=>s.status==="使用中").length,
+        lending:sims.filter(s=>s.status==="貸出中").length,
+        jp:sims.filter(s=>s.country==="日本").length, hk:sims.filter(s=>s.country==="香港").length,
+      };
+
+      const FBtn = ({fkey,val,label}) => (
+        <button onClick={()=>setFilter(f=>({...f,[fkey]:val}))} style={{
+          background:filter[fkey]===val?"#2563eb":"#0f172a",
+          border:`1px solid ${filter[fkey]===val?"#3b82f6":"#1e293b"}`,
+          color:filter[fkey]===val?"#fff":"#6b7280",
+          padding:"5px 14px",borderRadius:6,cursor:"pointer",fontSize:12,fontWeight:600,whiteSpace:"nowrap"
+        }}>{label}</button>
+      );
+
+      return (
+        <div style={{minHeight:"100vh",background:"#030712"}}>
+          <div style={{borderBottom:"1px solid #0f172a",padding:"18px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
+            <div>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <span style={{width:8,height:8,borderRadius:"50%",background:"#22c55e",boxShadow:"0 0 8px #22c55e",display:"inline-block"}}/>
+                <h1 style={{fontSize:18,fontWeight:700,letterSpacing:"-0.02em",color:"#f9fafb"}}>SIM Manager</h1>
+              </div>
+              <p style={{fontSize:11,color:"#4b5563",marginTop:2,marginLeft:18}}>回線管理ダッシュボード</p>
+            </div>
+            <button onClick={()=>setAdding(true)} style={{background:"#16a34a",border:"none",color:"#fff",padding:"8px 18px",borderRadius:7,cursor:"pointer",fontSize:13,fontWeight:600}}>＋ SIM追加</button>
+          </div>
+
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(100px,1fr))",gap:10,padding:"18px 24px 0"}}>
+            {[["総回線","total","#94a3b8"],["使用中","active","#22c55e"],["貸出中","lending","#60a5fa"],["🇯🇵 日本","jp","#f97316"],["🇭🇰 香港","hk","#e84042"]].map(([label,key,color])=>(
+              <div key={key} style={{background:"#0f172a",border:"1px solid #1e293b",borderRadius:8,padding:"12px 16px"}}>
+                <div style={{fontSize:10,color:"#4b5563",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.08em"}}>{label}</div>
+                <div style={{fontSize:24,fontWeight:700,color,fontFamily:"'JetBrains Mono',monospace",marginTop:4}}>{stats[key]}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{padding:"14px 24px",display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+            <input placeholder="🔍 検索..." value={filter.search} onChange={e=>setFilter(f=>({...f,search:e.target.value}))}
+              style={{background:"#0f172a",border:"1px solid #1e293b",color:"#f9fafb",padding:"6px 14px",borderRadius:6,fontSize:12,width:180,outline:"none"}}/>
+            <span style={{width:1,height:20,background:"#1e293b",display:"inline-block"}}/>
+            <FBtn fkey="country" val="all" label="全て"/>
+            <FBtn fkey="country" val="日本" label="🇯🇵 日本"/>
+            <FBtn fkey="country" val="香港" label="🇭🇰 香港"/>
+            <span style={{width:1,height:20,background:"#1e293b",display:"inline-block"}}/>
+            <FBtn fkey="status" val="all" label="全ステータス"/>
+            <FBtn fkey="status" val="使用中" label="使用中"/>
+            <FBtn fkey="status" val="貸出中" label="貸出中"/>
+            <FBtn fkey="status" val="解約済み" label="解約済み"/>
+          </div>
+
+          <div style={{padding:"0 24px 60px",overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+              <thead>
+                <tr style={{borderBottom:"1px solid #1e293b"}}>
+                  {["番号","キャリア","国","メール","端末","ステータス","メモ",""].map(h=>(
+                    <th key={h} style={{padding:"10px 12px",textAlign:"left",fontSize:10,fontWeight:700,color:"#374151",textTransform:"uppercase",letterSpacing:"0.08em",whiteSpace:"nowrap"}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(sim=>(
+                  <tr key={sim.id} style={{borderBottom:"1px solid #080d18",transition:"background 0.1s"}}
+                    onMouseEnter={e=>e.currentTarget.style.background="#0a1120"}
+                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                    <td style={{padding:"12px 12px",fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:"#cbd5e1",whiteSpace:"nowrap"}}>{sim.number}</td>
+                    <td style={{padding:"12px 12px",whiteSpace:"nowrap"}}><CarrierBadge carrier={sim.carrier}/></td>
+                    <td style={{padding:"12px 12px",fontSize:16}}>{sim.country==="日本"?"🇯🇵":"🇭🇰"}</td>
+                    <td style={{padding:"12px 12px",color:"#4b5563",fontSize:11,whiteSpace:"nowrap"}}>{sim.email||"—"}</td>
+                    <td style={{padding:"12px 12px",color:"#94a3b8",whiteSpace:"nowrap"}}>{sim.device||"—"}</td>
+                    <td style={{padding:"12px 12px",whiteSpace:"nowrap"}}><StatusBadge status={sim.status}/></td>
+                    <td style={{padding:"12px 12px",maxWidth:260}}>
+                      {sim.memo?(
+                        <div>
+                          <div style={{color:"#4b5563",fontSize:11,lineHeight:1.6,whiteSpace:expandedMemo===sim.id?"pre-wrap":"nowrap",overflow:"hidden",textOverflow:expandedMemo===sim.id?"clip":"ellipsis",maxWidth:240}}>{sim.memo}</div>
+                          {sim.memo.length>40&&<button onClick={()=>setExpandedMemo(expandedMemo===sim.id?null:sim.id)} style={{background:"none",border:"none",color:"#3b82f6",cursor:"pointer",fontSize:10,padding:"2px 0",fontWeight:600}}>{expandedMemo===sim.id?"▲ 折りたたむ":"▼ 展開"}</button>}
+                        </div>
+                      ):<span style={{color:"#1e293b"}}>—</span>}
+                    </td>
+                    <td style={{padding:"12px 12px"}}>
+                      <button onClick={()=>setEditing(sim)} style={{background:"#0f172a",border:"1px solid #1e293b",color:"#64748b",padding:"4px 12px",borderRadius:5,cursor:"pointer",fontSize:11,fontWeight:600}}>編集</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {filtered.length===0&&(
+              <div style={{textAlign:"center",padding:"60px 0"}}>
+                <div style={{fontSize:36,marginBottom:8}}>📵</div>
+                <div style={{fontSize:13,color:"#374151"}}>該当するSIMが見つかりません</div>
+              </div>
+            )}
+          </div>
+
+          {editing&&<Modal sim={editing} onClose={()=>setEditing(null)} onSave={handleSave} onDelete={handleDelete}/>}
+          {adding&&<AddModal onClose={()=>setAdding(false)} onAdd={handleAdd}/>}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+  </script>
+</body>
+</html>
