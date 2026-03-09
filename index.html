@@ -201,6 +201,13 @@
       const [adding,setAdding] = useState(false);
       const [expandedMemo,setExpandedMemo] = useState(null);
       const [sort,setSort] = useState({key:null,asc:true});
+      const [isMobile,setIsMobile] = useState(window.innerWidth<768);
+
+      useEffect(()=>{
+        const onResize = ()=>setIsMobile(window.innerWidth<768);
+        window.addEventListener("resize",onResize);
+        return ()=>window.removeEventListener("resize",onResize);
+      },[]);
 
       useEffect(()=>{
         try {
@@ -254,7 +261,7 @@
 
       return (
         <div style={{minHeight:"100vh",background:"#030712"}}>
-          <div style={{borderBottom:"1px solid #0f172a",padding:"18px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
+          <div style={{borderBottom:"1px solid #0f172a",padding:isMobile?"14px 16px":"18px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
             <div>
               <div style={{display:"flex",alignItems:"center",gap:10}}>
                 <span style={{width:8,height:8,borderRadius:"50%",background:"#22c55e",boxShadow:"0 0 8px #22c55e",display:"inline-block"}}/>
@@ -265,7 +272,7 @@
             <button onClick={()=>setAdding(true)} style={{background:"#16a34a",border:"none",color:"#fff",padding:"8px 18px",borderRadius:7,cursor:"pointer",fontSize:13,fontWeight:600}}>＋ SIM追加</button>
           </div>
 
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(100px,1fr))",gap:10,padding:"18px 24px 0"}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(3,1fr)":"repeat(auto-fit,minmax(100px,1fr))",gap:isMobile?8:10,padding:isMobile?"14px 16px 0":"18px 24px 0"}}>
             {[["総回線","total","#94a3b8"],["使用中","active","#22c55e"],["貸出中","lending","#60a5fa"],["🇯🇵 日本","jp","#f97316"],["🇭🇰 香港","hk","#e84042"]].map(([label,key,color])=>(
               <div key={key} style={{background:"#0f172a",border:"1px solid #1e293b",borderRadius:8,padding:"12px 16px"}}>
                 <div style={{fontSize:10,color:"#4b5563",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.08em"}}>{label}</div>
@@ -274,20 +281,51 @@
             ))}
           </div>
 
-          <div style={{padding:"14px 24px",display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+          <div style={{padding:isMobile?"12px 16px":"14px 24px"}}>
             <input placeholder="🔍 検索..." value={filter.search} onChange={e=>setFilter(f=>({...f,search:e.target.value}))}
-              style={{background:"#0f172a",border:"1px solid #1e293b",color:"#f9fafb",padding:"6px 14px",borderRadius:6,fontSize:12,width:180,outline:"none"}}/>
-            <span style={{width:1,height:20,background:"#1e293b",display:"inline-block"}}/>
-            <FBtn fkey="country" val="all" label="全て"/>
-            <FBtn fkey="country" val="日本" label="🇯🇵 日本"/>
-            <FBtn fkey="country" val="香港" label="🇭🇰 香港"/>
-            <span style={{width:1,height:20,background:"#1e293b",display:"inline-block"}}/>
-            <FBtn fkey="status" val="all" label="全ステータス"/>
-            <FBtn fkey="status" val="使用中" label="使用中"/>
-            <FBtn fkey="status" val="貸出中" label="貸出中"/>
-            <FBtn fkey="status" val="解約済み" label="解約済み"/>
+              style={{background:"#0f172a",border:"1px solid #1e293b",color:"#f9fafb",padding:"6px 14px",borderRadius:6,fontSize:12,width:isMobile?"100%":180,outline:"none",marginBottom:isMobile?8:0}}/>
+            <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4,marginTop:isMobile?0:8,WebkitOverflowScrolling:"touch"}}>
+              <FBtn fkey="country" val="all" label="全て"/>
+              <FBtn fkey="country" val="日本" label="🇯🇵 日本"/>
+              <FBtn fkey="country" val="香港" label="🇭🇰 香港"/>
+              <span style={{width:1,minWidth:1,height:20,background:"#1e293b",display:"inline-block",flexShrink:0}}/>
+              <FBtn fkey="status" val="all" label="全ステータス"/>
+              <FBtn fkey="status" val="使用中" label="使用中"/>
+              <FBtn fkey="status" val="貸出中" label="貸出中"/>
+              <FBtn fkey="status" val="解約済み" label="解約済み"/>
+            </div>
           </div>
 
+          {isMobile ? (
+            <div style={{padding:"0 16px 60px"}}>
+              {sorted.map(sim=>(
+                <div key={sim.id} onClick={()=>setEditing(sim)} style={{background:"#0f172a",border:"1px solid #1e293b",borderRadius:10,padding:"14px 16px",marginBottom:10,cursor:"pointer"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                    <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:13,color:"#cbd5e1"}}>{sim.number}</span>
+                    <span style={{fontSize:14}}>{sim.country==="日本"?"🇯🇵":"🇭🇰"}</span>
+                  </div>
+                  <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:8,flexWrap:"wrap"}}>
+                    <CarrierBadge carrier={sim.carrier}/>
+                    <StatusBadge status={sim.status}/>
+                  </div>
+                  {sim.device&&<div style={{color:"#94a3b8",fontSize:11,marginBottom:4}}>📱 {sim.device}</div>}
+                  {sim.email&&<div style={{color:"#4b5563",fontSize:11,marginBottom:4}}>✉ {sim.email}</div>}
+                  {sim.memo&&(
+                    <div style={{color:"#4b5563",fontSize:11,lineHeight:1.5,marginTop:6,borderTop:"1px solid #1e293b",paddingTop:6,whiteSpace:expandedMemo===sim.id?"pre-wrap":"nowrap",overflow:"hidden",textOverflow:expandedMemo===sim.id?"clip":"ellipsis"}}>
+                      {sim.memo}
+                      {sim.memo.length>40&&<div><button onClick={e=>{e.stopPropagation();setExpandedMemo(expandedMemo===sim.id?null:sim.id);}} style={{background:"none",border:"none",color:"#3b82f6",cursor:"pointer",fontSize:10,padding:"4px 0",fontWeight:600}}>{expandedMemo===sim.id?"▲ 折りたたむ":"▼ 展開"}</button></div>}
+                    </div>
+                  )}
+                </div>
+              ))}
+              {sorted.length===0&&(
+                <div style={{textAlign:"center",padding:"60px 0"}}>
+                  <div style={{fontSize:36,marginBottom:8}}>📵</div>
+                  <div style={{fontSize:13,color:"#374151"}}>該当するSIMが見つかりません</div>
+                </div>
+              )}
+            </div>
+          ) : (
           <div style={{padding:"0 24px 60px",overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
               <thead>
@@ -332,6 +370,7 @@
               </div>
             )}
           </div>
+          )}
 
           {editing&&<Modal sim={editing} onClose={()=>setEditing(null)} onSave={handleSave} onDelete={handleDelete}/>}
           {adding&&<AddModal onClose={()=>setAdding(false)} onAdd={handleAdd}/>}
