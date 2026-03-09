@@ -200,6 +200,7 @@
       const [editing,setEditing] = useState(null);
       const [adding,setAdding] = useState(false);
       const [expandedMemo,setExpandedMemo] = useState(null);
+      const [sort,setSort] = useState({key:null,asc:true});
 
       useEffect(()=>{
         try {
@@ -217,6 +218,8 @@
       const handleDelete = (id) => { save(sims.filter(s=>s.id!==id)); setEditing(null); };
       const handleAdd = (form) => save([...sims, {...form, id:Date.now()}]);
 
+      const toggleSort = (key) => setSort(s=>s.key===key?{key,asc:!s.asc}:{key,asc:true});
+
       const filtered = sims.filter(s=>{
         if(filter.country!=="all"&&s.country!==filter.country) return false;
         if(filter.status!=="all"&&s.status!==filter.status) return false;
@@ -226,6 +229,13 @@
         }
         return true;
       });
+
+      const sorted = sort.key ? [...filtered].sort((a,b)=>{
+        const av=(a[sort.key]||"").toLowerCase(), bv=(b[sort.key]||"").toLowerCase();
+        if(av<bv) return sort.asc?-1:1;
+        if(av>bv) return sort.asc?1:-1;
+        return 0;
+      }) : filtered;
 
       const stats = {
         total:sims.length, active:sims.filter(s=>s.status==="使用中").length,
@@ -282,13 +292,15 @@
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
               <thead>
                 <tr style={{borderBottom:"1px solid #1e293b"}}>
-                  {["番号","キャリア","国","メール","端末","ステータス","メモ",""].map(h=>(
-                    <th key={h} style={{padding:"10px 12px",textAlign:"left",fontSize:10,fontWeight:700,color:"#374151",textTransform:"uppercase",letterSpacing:"0.08em",whiteSpace:"nowrap"}}>{h}</th>
+                  {[["番号","number"],["キャリア","carrier"],["国",null],["メール","email"],["端末","device"],["ステータス","status"],["メモ",null],["",null]].map(([h,k])=>(
+                    <th key={h} onClick={k?()=>toggleSort(k):undefined} style={{padding:"10px 12px",textAlign:"left",fontSize:10,fontWeight:700,color:sort.key===k?"#93c5fd":"#374151",textTransform:"uppercase",letterSpacing:"0.08em",whiteSpace:"nowrap",cursor:k?"pointer":"default",userSelect:"none"}}>
+                      {h}{sort.key===k?(sort.asc?" ▲":" ▼"):""}
+                    </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(sim=>(
+                {sorted.map(sim=>(
                   <tr key={sim.id} style={{borderBottom:"1px solid #080d18",transition:"background 0.1s"}}
                     onMouseEnter={e=>e.currentTarget.style.background="#0a1120"}
                     onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
@@ -313,7 +325,7 @@
                 ))}
               </tbody>
             </table>
-            {filtered.length===0&&(
+            {sorted.length===0&&(
               <div style={{textAlign:"center",padding:"60px 0"}}>
                 <div style={{fontSize:36,marginBottom:8}}>📵</div>
                 <div style={{fontSize:13,color:"#374151"}}>該当するSIMが見つかりません</div>
