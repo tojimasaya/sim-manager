@@ -18,7 +18,55 @@
   </style>
 </head>
 <body>
-  <div id="root"></div>
+  <div id="lock-screen" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#030712">
+    <div style="text-align:center;width:100%;max-width:340px;padding:0 20px">
+      <div style="font-size:40px;margin-bottom:16px">🔒</div>
+      <h2 style="color:#f9fafb;font-size:16px;font-weight:700;margin-bottom:6px">SIM Manager</h2>
+      <p style="color:#4b5563;font-size:11px;margin-bottom:24px">アクセスするにはパスワードを入力してください</p>
+      <input id="pw-input" type="password" placeholder="パスワード" autofocus
+        style="width:100%;background:#1f2937;border:1px solid #374151;border-radius:7px;color:#f9fafb;padding:10px 14px;font-size:13px;outline:none;font-family:'Noto Sans JP',sans-serif;text-align:center"/>
+      <div id="pw-error" style="color:#ef4444;font-size:11px;margin-top:8px;display:none">パスワードが違います</div>
+      <button id="pw-btn" style="margin-top:14px;background:#2563eb;border:none;color:#fff;padding:9px 32px;border-radius:7px;cursor:pointer;font-size:13px;font-weight:600;font-family:'Noto Sans JP',sans-serif">ログイン</button>
+    </div>
+  </div>
+  <div id="root" style="display:none"></div>
+
+  <script>
+    const PW_HASH = "87369e858a776e2e608404075ceb2aad0f661c1377efa9678c97cd66304696cc";
+    const AUTH_KEY = "sim_mgr_auth";
+
+    async function sha256(str) {
+      const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+      return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+    }
+
+    async function unlock(pw) {
+      const hash = await sha256(pw);
+      if (hash === PW_HASH) {
+        sessionStorage.setItem(AUTH_KEY, "1");
+        document.getElementById("lock-screen").style.display = "none";
+        document.getElementById("root").style.display = "block";
+        return true;
+      }
+      return false;
+    }
+
+    (async function() {
+      if (sessionStorage.getItem(AUTH_KEY) === "1") {
+        document.getElementById("lock-screen").style.display = "none";
+        document.getElementById("root").style.display = "block";
+        return;
+      }
+      document.getElementById("pw-btn").onclick = async () => {
+        const ok = await unlock(document.getElementById("pw-input").value);
+        if (!ok) { document.getElementById("pw-error").style.display = "block"; }
+      };
+      document.getElementById("pw-input").onkeydown = (e) => {
+        if (e.key === "Enter") document.getElementById("pw-btn").click();
+      };
+    })();
+  </script>
+
   <script type="text/babel">
     const { useState, useEffect } = React;
     const STORAGE_KEY = "sim_manager_v1";
